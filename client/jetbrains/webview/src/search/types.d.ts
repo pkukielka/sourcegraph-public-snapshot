@@ -19,8 +19,6 @@ export interface Theme {
 
 export interface PluginConfig {
     instanceURL: string
-    accessToken: string | null
-    customRequestHeadersAsString: string | null
     pluginVersion: string
     anonymousUserId: string
 }

@@ -1,2 +1,2 @@
-function polyfillEventSource(headers: { [name: string]: string }, agent: any): void
+function polyfillEventSource(async headersCallback: () => Promise<Record<string, string>>, agent: any): void
 export default polyfillEventSource

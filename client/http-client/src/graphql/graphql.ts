@@ -83,7 +83,8 @@ export function requestGraphQLCommon<T, V = object>({
     request: string
     variables?: V
 }): Observable<GraphQLResult<T>> {
-    return fromFetch<GraphQLResult<T>>(buildGraphQLUrl({ request, baseUrl }), {
+    const url = buildGraphQLUrl({ request, baseUrl })
+    return fromFetch<GraphQLResult<T>>(url, {
         ...options,
         method: 'POST',
         body: JSON.stringify({ query: request, variables }),

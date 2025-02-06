@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { type Observable, of, type Subscription } from 'rxjs'
+import { from, type Observable, of, type Subscription } from 'rxjs'
 
 import { requestGraphQLCommon } from '@sourcegraph/http-client'
 import type { AuthenticatedUser } from '@sourcegraph/shared/src/auth'
@@ -37,12 +37,12 @@ import { StatusBar } from './StatusBar'
 import type { Search } from './types'
 
 import styles from './App.module.scss'
+import { mergeMap } from 'rxjs/operators'
+import { requestGraphQL } from './lib/requestGraphQl'
 
 interface Props {
     isDarkTheme: boolean
     instanceURL: string
-    accessToken: string | null
-    customRequestHeaders: Record<string, string> | null
     onPreviewChange: (match: SearchMatch, lineOrSymbolMatchIndex?: number) => Promise<void>
     onPreviewClear: () => Promise<void>
     onOpen: (match: SearchMatch, lineOrSymbolMatchIndex?: number) => Promise<void>
@@ -87,8 +87,6 @@ function fallbackToLiteralSearchIfNeeded(
 export const App: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     isDarkTheme,
     instanceURL,
-    accessToken,
-    customRequestHeaders,
     onPreviewChange,
     onPreviewClear,
     onOpen,
@@ -103,28 +101,16 @@ export const App: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     /**
      * @deprecated Prefer using Apollo-Client instead if possible. The migration is in progress.
      */
-    const requestGraphQL = useCallback<PlatformContext['requestGraphQL']>(
-        args =>
-            requestGraphQLCommon({
-                ...args,
-                baseUrl: instanceURL,
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Sourcegraph-Should-Trace': new URLSearchParams(window.location.search).get('trace') || 'false',
-                    ...(accessToken && { Authorization: `token ${accessToken}` }),
-                    ...customRequestHeaders,
-                },
-            }),
-        [instanceURL, accessToken, customRequestHeaders]
-    )
+    const requestGraphQLCallback = useCallback<PlatformContext['requestGraphQL']>(<R,V extends { [key: string]: any }>(
+        options: { request: string; variables: V }) =>
+            from(requestGraphQL<R, V>(options.request, options.variables)), [instanceURL])
 
     const settingsCascade: SettingsCascadeOrError =
-        useObservable(useMemo(() => initializeSourcegraphSettings(requestGraphQL).settings, [requestGraphQL])) ||
+        useObservable(useMemo(() => initializeSourcegraphSettings(requestGraphQLCallback).settings, [requestGraphQLCallback])) ||
         EMPTY_SETTINGS_CASCADE
 
     const platformContext = {
-        requestGraphQL,
+        requestGraphQLCallback,
     }
 
     const [matches, setMatches] = useState<SearchMatch[]>([])

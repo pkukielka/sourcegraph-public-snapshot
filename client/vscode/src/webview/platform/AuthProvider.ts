@@ -85,9 +85,7 @@ export class SourcegraphAuthProvider implements AuthenticationProvider, Disposab
         await this.cacheTokenFromStorage()
         // Update the polyfillEventSource on token changes
         polyfillEventSource(
-            this.currentToken
-                ? { Authorization: `token ${this.currentToken}`, ...endpointRequestHeadersSetting() }
-                : {},
+            () => Promise.resolve(this.currentToken ? { Authorization: `token ${this.currentToken}`, ...endpointRequestHeadersSetting } : {}),
             getProxyAgent()
         )
         this._onDidChangeSessions.fire({ added, removed, changed })
