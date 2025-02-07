@@ -73,7 +73,7 @@ export function renderReactApp(): void {
                 <App
                     // Make sure we recreate the React app when the instance URL or access token changes to
                     // avoid showing stale data.
-                    key={`${instanceURL}-${getAuthenticatedUser()?.id}-${errorRetryIndex}`}
+                    key={`${instanceURL}-${getAuthenticatedUser()?.id ?? 'unautenticated'}-${errorRetryIndex}`}
                     isDarkTheme={isDarkTheme}
                     instanceURL={instanceURL}
                     initialSearch={initialSearch}
