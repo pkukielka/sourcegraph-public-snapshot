@@ -66,7 +66,7 @@ export function registerWebviews({
             if (config.affectsConfiguration('sourcegraph.requestHeaders') && session) {
                 const newCustomHeaders = endpointRequestHeadersSetting()
                 polyfillEventSource(
-                    session.accessToken ? { Authorization: `token ${session.accessToken}`, ...newCustomHeaders } : {},
+                    () => Promise.resolve(session.accessToken ? { Authorization: `token ${session.accessToken}`, ...newCustomHeaders } : {}),
                     getProxyAgent()
                 )
             }

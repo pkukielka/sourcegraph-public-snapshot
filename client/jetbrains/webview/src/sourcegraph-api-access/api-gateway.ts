@@ -1,6 +1,7 @@
-import { gql, requestGraphQLCommon } from '@sourcegraph/http-client'
 import type { AuthenticatedUser } from '@sourcegraph/shared/src/auth'
 import type { CurrentAuthStateResult, CurrentAuthStateVariables } from '@sourcegraph/shared/src/graphql-operations'
+import { requestGraphQL } from '../search/lib/requestGraphQl'
+import { gql } from '@sourcegraph/http-client'
 
 export type SiteVersionAndCurrentAuthStateResult = CurrentAuthStateResult & {
     site: {
@@ -48,27 +49,15 @@ export interface SiteVersionAndCurrentUser {
     currentUser: AuthenticatedUser | null
 }
 
-export async function getSiteVersionAndAuthenticatedUser(
-    instanceURL: string,
-    accessToken: string | null,
-    customRequestHeaders: { [name: string]: string } | null
-): Promise<SiteVersionAndCurrentUser> {
+export async function getSiteVersionAndAuthenticatedUser(instanceURL: string): Promise<SiteVersionAndCurrentUser> {
     if (!instanceURL) {
         return { site: null, currentUser: null }
     }
 
-    const result = await requestGraphQLCommon<SiteVersionAndCurrentAuthStateResult, CurrentAuthStateVariables>({
-        request: siteVersionAndUserQuery,
-        variables: {},
-        baseUrl: instanceURL,
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-Sourcegraph-Should-Trace': new URLSearchParams(window.location.search).get('trace') || 'false',
-            ...(accessToken && { Authorization: `token ${accessToken}` }),
-            ...customRequestHeaders,
-        },
-    }).toPromise()
+    const result = await requestGraphQL<SiteVersionAndCurrentAuthStateResult, CurrentAuthStateVariables>(siteVersionAndUserQuery, {}).catch(error => {
+        console.error("Failed to get site and user data", error)
+        return { data: null }
+    })
 
     return result.data ?? { site: null, currentUser: null }
 }

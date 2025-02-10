@@ -64,6 +64,11 @@ interface GetThemeRequest {
     action: 'getTheme'
 }
 
+interface GetCustomRequestHeaders {
+    action: 'getCustomRequestHeaders'
+}
+
+
 interface IndicateSearchError {
     action: 'indicateSearchError'
     arguments: { errorMessage: string; timeAsISOString: string }
@@ -93,6 +98,7 @@ export type Request =
     | OpenRequest
     | GetConfigRequest
     | GetThemeRequest
+    | GetCustomRequestHeaders
     | IndicateSearchError
     | SaveLastSearchRequest
     | LoadLastSearchRequest
@@ -102,6 +108,16 @@ export type Request =
 
 let lastPreviewUpdateCallSendDateTime = new Date()
 
+
+export async function getCustomRequestHeaders(): Promise<Record<string, string>> {
+    try {
+        return (await callJava({ action: 'getCustomRequestHeaders' })) as Record<string, string>
+    } catch (error) {
+        console.error(`Failed to get custom request headers: ${(error as Error).message}`)
+        return {}
+    }
+}
+
 export async function getConfigAlwaysFulfill(): Promise<PluginConfig> {
     try {
         return (await callJava({ action: 'getConfig' })) as PluginConfig
@@ -109,8 +125,6 @@ export async function getConfigAlwaysFulfill(): Promise<PluginConfig> {
         console.error(`Failed to get config: ${(error as Error).message}`)
         return {
             instanceURL: 'https://sourcegraph.com/',
-            accessToken: null,
-            customRequestHeadersAsString: null,
             pluginVersion: '0.0.0',
             anonymousUserId: 'no-user-id',
         }

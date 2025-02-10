@@ -58,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Add custom headers to `EventSource` Authorization header when provided
     const customHeaders = endpointRequestHeadersSetting()
     polyfillEventSource(
-        initialAccessToken ? { Authorization: `token ${initialAccessToken}`, ...customHeaders } : {},
+        () => Promise.resolve(initialAccessToken ? { Authorization: `token ${initialAccessToken}`, ...customHeaders } : {}),
         getProxyAgent()
     )
 

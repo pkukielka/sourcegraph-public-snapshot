@@ -10,11 +10,11 @@ const http = require('http')
 const https = require('https')
 const util = require('util')
 
-let fixedHeaders = {}
+let headersCallback
 let proxyAgent = null
 
-module.exports = function polyfillEventSource(headers, agent) {
-  fixedHeaders = { ...headers }
+module.exports = function polyfillEventSource(cb, agent) {
+  headersCallback = cb
   proxyAgent = agent
 
   global.EventSource = EventSource
@@ -90,12 +90,12 @@ function EventSource(url, eventSourceInitDict) {
       url = reconnectUrl
       reconnectUrl = null
     }
-    setTimeout(() => {
+    setTimeout(async () => {
       if (readyState !== EventSource.CONNECTING || self.connectionInProgress) {
         return
       }
       self.connectionInProgress = true
-      connect()
+      await connect()
     }, self.reconnectInterval)
   }
 
@@ -112,12 +112,12 @@ function EventSource(url, eventSourceInitDict) {
 
   var reconnectUrl = null
 
-  function connect() {
+  async function connect() {
     const options = parse(url)
     let isSecure = options.protocol === 'https:'
     options.headers = {
       Accept: 'text/event-stream',
-      ...fixedHeaders,
+      ...await headersCallback(),
     }
     if (lastEventId) {
       options.headers['Last-Event-ID'] = lastEventId
@@ -370,32 +370,32 @@ function EventSource(url, eventSourceInitDict) {
 
 util.inherits(EventSource, events.EventEmitter)
 EventSource.prototype.constructor = EventSource // make stacktraces readable
-;['open', 'error', 'message'].forEach(method => {
-  Object.defineProperty(EventSource.prototype, 'on' + method, {
-    /**
-     * Returns the current listener
-     *
-     * @returns {Mixed} the set function or undefined
-     * @api private
-     */
-    get: function get() {
-      const listener = this.listeners(method)[0]
-      return listener ? (listener._listener ? listener._listener : listener) : undefined
-    },
+  ;['open', 'error', 'message'].forEach(method => {
+    Object.defineProperty(EventSource.prototype, 'on' + method, {
+      /**
+       * Returns the current listener
+       *
+       * @returns {Mixed} the set function or undefined
+       * @api private
+       */
+      get: function get() {
+        const listener = this.listeners(method)[0]
+        return listener ? (listener._listener ? listener._listener : listener) : undefined
+      },
 
-    /**
-     * Start listening for events
-     *
-     * @param {Function} listener the listener
-     * @returns {Mixed} the set function or undefined
-     * @api private
-     */
-    set: function set(listener) {
-      this.removeAllListeners(method)
-      this.addEventListener(method, listener)
-    },
+      /**
+       * Start listening for events
+       *
+       * @param {Function} listener the listener
+       * @returns {Mixed} the set function or undefined
+       * @api private
+       */
+      set: function set(listener) {
+        this.removeAllListeners(method)
+        this.addEventListener(method, listener)
+      },
+    })
   })
-})
 
 /**
  * Ready states

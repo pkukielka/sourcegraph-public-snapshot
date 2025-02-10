@@ -12,6 +12,7 @@ import { App } from './App'
 import { handleRequest } from './java-to-js-bridge'
 import {
     getConfigAlwaysFulfill,
+    getCustomRequestHeaders,
     getThemeAlwaysFulfill,
     indicateFinishedLoading,
     loadLastSearchAlwaysFulfill,
@@ -26,8 +27,6 @@ setLinkComponent(AnchorLink)
 
 let isDarkTheme = false
 let instanceURL = 'https://sourcegraph.com/'
-let accessToken: string | null = null
-let customRequestHeaders: Record<string, string> | null = {}
 let anonymousUserId: string
 let pluginVersion: string
 let initialSearch: Search | null = null
@@ -39,6 +38,8 @@ let isServerAccessSuccessful: boolean | null = null
 
 window.initializeSourcegraph = async () => {
     try {
+        polyfillEventSource(getCustomRequestHeaders, undefined)
+
         const [theme, config, lastSearch]: [Theme, PluginConfig, Search | null] = await Promise.all([
             getThemeAlwaysFulfill(),
             getConfigAlwaysFulfill(),
@@ -72,11 +73,9 @@ export function renderReactApp(): void {
                 <App
                     // Make sure we recreate the React app when the instance URL or access token changes to
                     // avoid showing stale data.
-                    key={`${instanceURL}-${accessToken}-${errorRetryIndex}`}
+                    key={`${instanceURL}-${getAuthenticatedUser()?.id ?? 'unautenticated'}-${errorRetryIndex}`}
                     isDarkTheme={isDarkTheme}
                     instanceURL={instanceURL}
-                    accessToken={accessToken}
-                    customRequestHeaders={customRequestHeaders}
                     initialSearch={initialSearch}
                     onOpen={onOpen}
                     onPreviewChange={onPreviewChange}
@@ -98,34 +97,8 @@ export function renderReactApp(): void {
 
 export function applyConfig(config: PluginConfig): void {
     instanceURL = config.instanceURL
-    accessToken = config.accessToken || null
-    customRequestHeaders = parseCustomRequestHeadersString(config.customRequestHeadersAsString)
     anonymousUserId = config.anonymousUserId || 'no-user-id'
     pluginVersion = config.pluginVersion
-    polyfillEventSource(
-        { ...(accessToken ? { Authorization: `token ${accessToken}` } : {}), ...customRequestHeaders },
-        undefined
-    )
-}
-
-function parseCustomRequestHeadersString(headersString: string | null): Record<string, string> | null {
-    const result: Record<string, string> = {}
-    if (!headersString) {
-        return null
-    }
-    const headersArray = headersString.split(',')
-    if (headersArray.length % 2 !== 0) {
-        return null
-    }
-    for (let index = 0; index < headersArray.length; index += 2) {
-        const name = headersArray[index].trim()
-        const value = headersArray[index + 1].trim()
-        // Skip invalid keys
-        if (name.match(/^[\w-]+$/)) {
-            result[name] = value
-        }
-    }
-    return result
 }
 
 export function applyTheme(theme: Theme, rootElement: Element = document.documentElement): void {
@@ -173,21 +146,13 @@ export function applyTheme(theme: Theme, rootElement: Element = document.documen
 
 export async function updateVersionAndAuthDataFromServer(): Promise<void> {
     try {
-        const { site, currentUser } = await getSiteVersionAndAuthenticatedUser(
-            instanceURL,
-            accessToken,
-            customRequestHeaders
-        )
+        const { site, currentUser } = await getSiteVersionAndAuthenticatedUser(instanceURL)
         authenticatedUser = currentUser
         backendVersion = site?.productVersion || null
         isServerAccessSuccessful = true
     } catch (error) {
-        console.info('Could not authenticate with current URL and token settings', instanceURL, accessToken, error)
+        console.error('Could not authenticate with current settings', instanceURL, error)
         isServerAccessSuccessful = false
-    }
-
-    if (accessToken && !authenticatedUser) {
-        console.warn(`No initial authenticated user with access token “${accessToken}”`)
     }
 }
 
@@ -199,16 +164,8 @@ function applyLastSearch(lastSearch: Search | null): void {
     initialSearch = lastSearch
 }
 
-export function getAccessToken(): string | null {
-    return accessToken
-}
-
 export function getInstanceURL(): string {
     return instanceURL
-}
-
-export function getCustomRequestHeaders(): Record<string, string> | null {
-    return customRequestHeaders
 }
 
 export function wasServerAccessSuccessful(): boolean | null {
