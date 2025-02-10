@@ -95,7 +95,7 @@ export function renderReactApp(): void {
     render(<RouterProvider router={router} />, node)
 }
 
-export async function applyConfig(config: PluginConfig): Promise<void> {
+export function applyConfig(config: PluginConfig): void {
     instanceURL = config.instanceURL
     anonymousUserId = config.anonymousUserId || 'no-user-id'
     pluginVersion = config.pluginVersion

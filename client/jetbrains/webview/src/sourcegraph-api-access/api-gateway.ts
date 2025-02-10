@@ -54,6 +54,10 @@ export async function getSiteVersionAndAuthenticatedUser(instanceURL: string): P
         return { site: null, currentUser: null }
     }
 
-    const result = await requestGraphQL<SiteVersionAndCurrentAuthStateResult, CurrentAuthStateVariables>(siteVersionAndUserQuery, {})
+    const result = await requestGraphQL<SiteVersionAndCurrentAuthStateResult, CurrentAuthStateVariables>(siteVersionAndUserQuery, {}).catch(error => {
+        console.error("Failed to get site and user data", error)
+        return { data: null }
+    })
+
     return result.data ?? { site: null, currentUser: null }
 }
